@@ -3,8 +3,12 @@ $(function(){
     
     var query_base = 'http://jsonp.jit.su/?url=http://demo.ark.cs.cmu.edu/parse/api/v1/parse?sentence=';
     var query = $('#q_text').val();
+    var assertion = {};
 
     query = query.replace(/^\s*is\s+it/i, 'it is');  // Is it -> It is
+    if(query.match(/^\s*can\s+it/i) != null) {  // Can it ..?
+      assertion.relation = 'CapableOf';
+    }
 
     query = query_base + encodeURI(query);
     
@@ -14,7 +18,6 @@ $(function(){
       var entities = data.sentences[0].entities;
       var frames = data.sentences[0].frames;
       var relations = data.sentences[0].relations;
-      var assertion = {};
       
       $('#results').html('');
 
@@ -34,6 +37,8 @@ $(function(){
           if(frames[f].target.start == idx) {
             // Get the Frame name
             assertion.frame_name = frames[f].target.name;
+            assertion.frame_text = frames[f].target.text;
+
 
             // Get the Object
             if(frames[f].annotationSets[0].frameElements.length > 1) {  // Object in the frame 
@@ -61,6 +66,10 @@ $(function(){
             assertion.object = tokens[term_idx];
           }
         }
+      }
+
+      if(assertion.relation == 'CapableOf') {
+        assertion.object = assertion.frame_text + ' ' + assertion.object;
       }
 
       console.log(assertion);
