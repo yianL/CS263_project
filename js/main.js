@@ -1,76 +1,102 @@
+var handleIsIt = function(arkResult) {
+  var assertion = {};
+  
+  for(var r in arkResult.relations) {
+    if(arkResult.relations[r][1] == 'nsubj') {
+      var term_idx = Number(arkResult.relations[r][2][0][1].substr(1)) - 1;
+      if(arkResult.entities[term_idx][1] == 'JJ')
+        assertion.relation = 'hasProperty';
+      else
+        assertion.relation = 'isA';
+      assertion.object = arkResult.tokens[term_idx];
+    }
+  }
+
+  return assertion;
+};
+
+var handleCanIt = function(arkResult) {
+  var assertion = {};
+  var frameInfo = getFrameInfo(arkResult);
+
+  // populate assertion
+  assertion.relation = 'CapableOf';
+  assertion.concept = frameInfo.frame_text + ' ' + frameInfo.object;
+
+  return assertion;
+};
+
+var handleDoesIt = function(arkResult) {
+  var assertion = {};
+  var frameInfo = getFrameInfo(arkResult);
+
+  assertion.relation = frameInfo.frame_name;
+  assertion.concept = frameInfo.frame_text + ' ' + frameInfo.object;
+
+  return assertion;
+};
+
+var findFirstVerbIndex = function(entities) {
+  var idx = 0;
+  for (var e in entities) {
+    if(entities[e][1] == 'VB'){ 
+      return idx;
+    }
+    idx += 1;
+  }
+  return -1;
+};
+
+var getFrameInfo = function(arkResult) {
+  var frameInfo = {};
+  var idx = findFirstVerbIndex(arkResult.entities);
+
+  for(var f in arkResult.frames) {
+    if(arkResult.frames[f].target.start == idx) {
+      // Get the Frame name
+      frameInfo.frame_name = arkResult.frames[f].target.name;
+      frameInfo.frame_text = arkResult.frames[f].target.text;
+
+      // Get the Object
+      if(arkResult.frames[f].annotationSets[0].frameElements.length > 1) {  // Object in the frame 
+        frameInfo.object = arkResult.frames[f].annotationSets[0].frameElements[1].text;
+      }
+      else {  
+        // Look for direct object
+        for(var r in arkResult.relations) {
+          if(arkResult.relations[r][1] == 'dobj') {
+            var term_idx = Number(arkResult.relations[r][2][1][1].substr(1)) - 1;
+            frameInfo.object = arkResult.tokens[term_idx];
+          }
+        }
+      }
+    }
+  }
+  return frameInfo;
+};
+
 $(function(){
   $('#submit_btn').click(function(){
     
     var query_base = 'http://jsonp.jit.su/?url=http://demo.ark.cs.cmu.edu/parse/api/v1/parse?sentence=';
     var query = $('#q_text').val();
-    var assertion = {};
+    var assertion;
 
-    query = query.replace(/^\s*is\s+it/i, 'it is');  // Is it -> It is
-    if(query.match(/^\s*can\s+it/i) != null) {  // Can it ..?
-      assertion.relation = 'CapableOf';
-    }
-
-    query = query_base + encodeURI(query);
+    query = query.replace(/^\s*is\s+it/i, 'it is');
     
-    $.getJSON(query, function(data){
-      console.log(data.sentences);
-      var tokens = data.sentences[0].tokens;
-      var entities = data.sentences[0].entities;
-      var frames = data.sentences[0].frames;
-      var relations = data.sentences[0].relations;
-      
-      $('#results').html('');
+    $.getJSON(query_base + encodeURI(query), function(data){
+      //console.log(data.sentences);
 
-      var idx = 0;
-      var frame_found = false;
-      // Find the first Verb 
-      for (var e in entities) {
-        if(entities[e][1] == 'VB'){ 
-          frame_found = true;
-          break;
-        }
-        idx += 1;
+
+      if(query.match(/^\s*it\s+is/i) != null) { // Is it?
+        assertion = handleIsIt(data.sentences[0]);
+      } else if(query.match(/^\s*can\s+it/i) != null) {  // Can it ..?
+        assertion = handleCanIt(data.sentences[0]);
+      } else if(query.match(/^\s*does\s+it/i) != null) {
+        assertion = handleDoesIt(data.sentences[0]);
       }
 
-      if(frame_found) {
-        for(var f in frames) {
-          if(frames[f].target.start == idx) {
-            // Get the Frame name
-            assertion.frame_name = frames[f].target.name;
-            assertion.frame_text = frames[f].target.text;
-
-
-            // Get the Object
-            if(frames[f].annotationSets[0].frameElements.length > 1) {  // Object in the frame 
-              assertion.object = frames[f].annotationSets[0].frameElements[1].text;
-            }
-            else {  
-              // Look for direct object
-              for(var r in relations) {
-                if(relations[r][1] == 'dobj') {
-                  var term_idx = Number(relations[r][2][1][1].substr(1)) - 1;
-                  assertion.object = tokens[term_idx];
-                }
-              }
-            }
-          }
-        }  
-      } else {  // no usable frames
-        for(var r in relations) {
-          if(relations[r][1] == 'nsubj') {
-            var term_idx = Number(relations[r][2][0][1].substr(1)) - 1;
-            if(entities[term_idx][1] == 'JJ')
-              assertion.relation = 'hasProperty';
-            else
-              assertion.relation = 'isA';
-            assertion.object = tokens[term_idx];
-          }
-        }
-      }
-
-      if(assertion.relation == 'CapableOf') {
-        assertion.object = assertion.frame_text + ' ' + assertion.object;
-      }
+      //$('#results').html('');
 
       console.log(assertion);
     });
