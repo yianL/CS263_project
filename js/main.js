@@ -1,3 +1,16 @@
+
+//=============================================================================
+//  handleIsIt
+//
+//    handle all queries that begin with "Is it...?"
+//        
+//     notes: 
+//            determine relation     determine concept
+//              jj->HasProperty       nsubj dependency
+//              else->IsA
+//
+//    **warning** doesn't handle "is it larger than..?"
+//=============================================================================
 var handleIsIt = function(arkResult) {
   var assertion = {};
   
@@ -15,6 +28,15 @@ var handleIsIt = function(arkResult) {
   return assertion;
 };
 
+
+//=============================================================================
+//  handleCanIt
+//
+//    handle all queries that begin with "Can it...?"
+//     notes: 
+//            determine relation     determine concept
+//              capableOf              first verb + dobj
+//=============================================================================
 var handleCanIt = function(arkResult) {
   var assertion = {};
   var frameInfo = getFrameInfo(arkResult);
@@ -26,16 +48,49 @@ var handleCanIt = function(arkResult) {
   return assertion;
 };
 
+
+//=============================================================================
+//  handleDoesIt
+//
+//    handle all queries that begin with "Does it...?"
+//     notes: 
+//            determine relation     determine concept
+//            map from first verb       depends on verb (v+o or o)        
+//=============================================================================
 var handleDoesIt = function(arkResult) {
   var assertion = {};
   var frameInfo = getFrameInfo(arkResult);
 
-  assertion.relation = frameInfo.frame_name;
-  assertion.concept = frameInfo.frame_text + ' ' + frameInfo.object;
+  if( frameInfo.frame_name == 'Residence') {
+    assertion.relation = 'AtLocation';
+    assertion.concept = frameInfo.object;
+  }
+  else if( frameInfo.frame_name == 'Possession' ) {
+    assertion.relation = 'HasA';
+    assertion.concept = frameInfo.object;
+  }
+  else if( frameInfo.frame_name == 'Ingestion' ) {
+    assertion.relation = 'Desires';
+    assertion.concept = frameInfo.object;
+  }
+  else if( frameInfo.frame_name == 'Change_position_on_a_scale' ) {
+    assertion.relation = 'HasProperty';
+    assertion.concept = frameInfo.frame_text + ' ' + frameInfo.object;
+  }
+  else {
+    assertion.relation = frameInfo.frame_name;
+    assertion.concept = frameInfo.frame_text + ' ' + frameInfo.object;
+  }
 
   return assertion;
 };
 
+//=============================================================================
+//  findFirstVerbIndex
+//
+//    finds the index of the first verb in the entities JSON object 
+//      returned by ARK/Semafor
+//=============================================================================
 var findFirstVerbIndex = function(entities) {
   var idx = 0;
   for (var e in entities) {
@@ -47,6 +102,11 @@ var findFirstVerbIndex = function(entities) {
   return -1;
 };
 
+//=============================================================================
+// getFrameInfo
+//    
+//  gets the frame of the first verb and retrieves object from frame or dobj dependency
+//=============================================================================
 var getFrameInfo = function(arkResult) {
   var frameInfo = {};
   var idx = findFirstVerbIndex(arkResult.entities);
@@ -75,6 +135,12 @@ var getFrameInfo = function(arkResult) {
   return frameInfo;
 };
 
+
+//=============================================================================
+//  sumbitButtonHanlder / main
+//
+//    The animal game player
+//=============================================================================
 $(function(){
   $('#submit_btn').click(function(){
     
