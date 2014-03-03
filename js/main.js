@@ -1,3 +1,134 @@
+var query_base = 'http://jsonp.jit.su/?url=';
+var conceptNetSearchBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/search?';
+var conceptNetAssocBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/assoc/';
+var animal = 'bear';
+var conceptNetlimit = 100;
+var similarityThreshold = 0.96;
+
+var stopwordList = ['a','about','above','after','again','against','all','am',
+'an','and','any','are','as','at','be','because','been','before','being','below',
+'between','both','but','by','cannot','could','did','do','does','doing','down',
+'during','each','few','for','from','further','had','has','have','having','he',
+'her','here','hers','herself','him','himself','his','how','i','if','in','into',
+'is','it','its','itself','me','more','most','my','myself','no','nor','not','of',
+'off','on','once','only','or','other','ought','our','ours','ourselves','out',
+'over','own','same','she','should','so','some','such','than','that','the',
+'their','theirs','them','themselves','then','there','these','they','this',
+'those','through','to','too','under','until','up','very','was','we','were',
+'what','when','where','which','while','who','whom','why','with','would','you',
+'your','yours','yourself','yourselves'];
+
+
+//=============================================================================
+//   queryConceptNet
+//
+//        query conceptNet with passed assertion
+//        if assertion not found, search through concept similar to animal
+//=============================================================================
+var queryConceptNet = function (assertion) 
+{
+
+     var conceptNetQuery = buildConceptNetSearchQuery(animal, assertion);
+     console.log(conceptNetQuery);
+
+     $.getJSON(query_base + encodeURIComponent(conceptNetQuery), function(data){
+     // console.log(data);  
+
+     var edges = data.edges;
+     for( var e in edges )
+     {
+          var edge = edges[e];
+          console.log( edge.start + ", " + edge.rel + ", " + edge.end );
+     }
+
+     if( edges.length > 0) 
+     {
+          console.log("YES!");
+     }
+     else
+     {
+          searchSimilarConcepts(assertion);
+          console.log("NO!");
+     }
+    });
+
+
+};
+//=============================================================================
+//   searchSimilarConcepts
+//
+//        Searches for assertion on concept similar to animal
+//=============================================================================
+var searchSimilarConcepts = function(assertion)
+{
+     var conceptNetAssocQuery = conceptNetAssocBaseURI + 'c/en/' + animal +
+                                             '?limit=' + conceptNetlimit;
+          $.getJSON(query_base + encodeURIComponent(conceptNetAssocQuery), function(data)
+          {
+               var similar = data.similar;
+               for( var c in similar)
+               {
+                    var similarConcept = similar[c][0];
+                    var similarWeight = similar[c][1];
+                    if(similarWeight > similarityThreshold)
+                    {
+                         console.log("concept " + similarConcept + ", weight = " +
+                                        similarWeight);
+                         similarConcept = similarConcept.replace("/c/en/", '');
+                         var conceptNetSimilarConceptSearch = buildConceptNetSearchQuery( similarConcept, assertion);
+                         $.getJSON(query_base + encodeURIComponent(conceptNetSimilarConceptSearch), function(data)
+                         {
+                              console.log(data);
+                         });
+
+                    }
+               }
+          }); 
+};
+
+//=============================================================================
+//   buildConceptNetSearchQuery
+//
+//        map assertion to webAPI search format
+//=============================================================================
+var buildConceptNetSearchQuery = function(startConcept, assertion)
+{
+     var nonStopWordConcept = removeStopWords(assertion.concept);
+     var underScoredConcept = nonStopWordConcept.replace(/\s/g, '_');
+     var query =    conceptNetSearchBaseURI +
+                    'start=/c/en/' + startConcept +
+                    '&rel=/r/'     + assertion.relation +
+                    '&end=/c/en/' + underScoredConcept;
+     //console.log("Query: " + query);
+     return query;
+
+};
+
+var removeStopWords = function(string) 
+{
+     //console.log("remove stop words: " + string);
+     var words = string.split(" ");
+     var nonStopWords = [];
+     for( var i in words)
+     {
+          if( stopwordList.indexOf(words[i]) == -1  )
+          {
+               nonStopWords.push(words[i]);
+          }
+     }
+
+     var stringWithoutStopWords = '';
+     for( var i in nonStopWords )
+     {
+          stringWithoutStopWords += nonStopWords[i] + " ";
+     }
+     stringWithoutStopWords  = stringWithoutStopWords.substr(0, stringWithoutStopWords.length-1);
+     //console.log(stringWithoutStopWords);
+     return stringWithoutStopWords
+
+};
+
+
 
 //=============================================================================
 //  handleIsIt
@@ -18,11 +149,16 @@ var handleIsIt = function(arkResult) {
     if(arkResult.relations[r][1] == 'nsubj') {
       var term_idx = Number(arkResult.relations[r][2][0][1].substr(1)) - 1;
       if(arkResult.entities[term_idx][1] == 'JJ')
-        assertion.relation = 'hasProperty';
+        assertion.relation = 'HasProperty';
       else
-        assertion.relation = 'isA';
-      assertion.object = arkResult.tokens[term_idx];
+        assertion.relation = 'IsA';
+      assertion.concept = arkResult.tokens[term_idx];
     }
+  }
+
+  if( assertion.concept == animal)
+  {
+     alert("YOU GUESSED IT, YOU WIN!");
   }
 
   return assertion;
@@ -109,6 +245,7 @@ var findFirstVerbIndex = function(entities) {
 //=============================================================================
 var getFrameInfo = function(arkResult) {
   var frameInfo = {};
+  frameInfo.object = '';
   var idx = findFirstVerbIndex(arkResult.entities);
 
   for(var f in arkResult.frames) {
@@ -132,6 +269,7 @@ var getFrameInfo = function(arkResult) {
       }
     }
   }
+
   return frameInfo;
 };
 
@@ -162,9 +300,10 @@ $(function(){
         assertion = handleDoesIt(data.sentences[0]);
       }
 
+      queryConceptNet(assertion);
       //$('#results').html('');
 
-      console.log(assertion);
+      //console.log(assertion);
     });
   });
 });
