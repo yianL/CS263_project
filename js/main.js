@@ -240,33 +240,88 @@ var buildConceptNetTextQuery = function(wordList)
      return  conceptNetSearchBaseURI + 'text=' + textList;
 }
 
+var findCombinations = function(str)
+{
+     var fn = function(active, rest, a) {
+        if (active.length === 0 && rest.length === 0)
+            return;
+        if (rest.length === 0) {
+            a.push(active);
+        } else {
+         
+            var tmp = active.slice(0);
+            tmp.push(rest[0])
+            fn(tmp, rest.slice(1), a);
+            fn(active, rest.slice(1), a);
+           
+            
+        }
+        return a;
+    }
+    return fn([], str, []);
+
+}
+
 var queryConceptNetText = function(listOfWords)
 {
 
-     var conceptNetQuery = buildConceptNetTextQuery( listOfWords );
-     console.log(conceptNetQuery);
+     var textCombos =  findCombinations(listOfWords);
+     for( combo in textCombos ){
 
-     $.getJSON(query_base + encodeURIComponent(conceptNetQuery), function(data)
-     {
-          // console.log(data);  
+          var conceptNetQuery = buildConceptNetTextQuery( textCombos[combo] );
+          console.log(conceptNetQuery);
 
-          var edges = data.edges;
-          for( var e in edges )
-          {
-               var edge = edges[e];
-               console.log( edge.start + ", " + edge.rel + ", " + edge.end );
-          }
+      $.ajax({ 
+          url: query_base + encodeURI(conceptNetQuery), 
+          dataType: 'json', 
+          async: false, 
+          success: function(data){ 
+               // console.log(data);  
 
-          if( edges.length > 0) 
-          {
-               console.log("YES!");
-          }
-          else
-          {
-               searchSimilarConcepts(assertion);
-               console.log("NO!");
-          }
-    });
+                var edges = data.edges;
+                console.log( combo + ": " + edges.length);
+               // for( var e in edges )
+               // {
+               //      var edge = edges[e];
+               //      console.log( edge.start + ", " + edge.rel + ", " + edge.end );
+               // }
+
+               // if( edges.length > 0) 
+               // {
+               //      console.log("YES!");
+               // }
+               // else
+               // {
+               //      searchSimilarConcepts(assertion);
+               //      console.log("NO!");
+               // }
+          } 
+     });
+
+     }
+     
+
+    //  $.getJSON(query_base + encodeURIComponent(conceptNetQuery), function(data)
+    //  {
+    //       // console.log(data);  
+
+    //       var edges = data.edges;
+    //       for( var e in edges )
+    //       {
+    //            var edge = edges[e];
+    //            console.log( edge.start + ", " + edge.rel + ", " + edge.end );
+    //       }
+
+    //       if( edges.length > 0) 
+    //       {
+    //            console.log("YES!");
+    //       }
+    //       else
+    //       {
+    //            searchSimilarConcepts(assertion);
+    //            console.log("NO!");
+    //       }
+    // });
 
 }
 
@@ -344,11 +399,11 @@ var lemmatize = function(string)
 }
 
 
-//=============================================================================
+//==============================================================================
 //  sumbitButtonHanlder / main
 //
 //    The animal game player
-//=============================================================================
+//==============================================================================
 $(function(){
   $('#submit_btn').click(function(){
     
@@ -363,6 +418,8 @@ $(function(){
 
 
 
+     //Use assertions to query conceptnet
+
       // if(query.match(/^\s*it\s+is/i) != null) { // Is it?
       //   assertion = handleIsIt(data.sentences[0]);
       // } else if(query.match(/^\s*can\s+it/i) != null) {  // Can it ..?
@@ -373,11 +430,11 @@ $(function(){
 
       //queryConceptNet(assertion);
       //$('#results').html('');
+
+      //Use text to search conceptNet, accepts any relation0
       query = query.replace(/[.?]*$/, '');
       var noStopWordsQuery = removeStopWords(query);
-
       var lemmatizedString = lemmatize(noStopWordsQuery);
-      console.log(lemmatizedString);
       queryConceptNetText(lemmatizedString.split(' '));
 
       //console.log(assertion);
