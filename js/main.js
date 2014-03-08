@@ -3,7 +3,7 @@ var arkParseBaseURI = 'http://demo.ark.cs.cmu.edu/parse/api/v1/parse?sentence=';
 var conceptNetSearchBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/search?';
 var conceptNetAssocBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/assoc/';
 var normalizeWSBaseURI = 'http://nodeboxlg.appspot.com/normalize?term=';
-var animal = 'bear';
+var animal = 'monkey';
 var conceptNetlimit = 100;
 var similarityThreshold = 0.96;
 
@@ -264,66 +264,73 @@ var findCombinations = function(str)
 
 var queryConceptNetText = function(listOfWords)
 {
-
      var textCombos =  findCombinations(listOfWords);
+     var results;
+     var sim;
+
      for( combo in textCombos ){
 
-          var conceptNetQuery = buildConceptNetTextQuery( textCombos[combo] );
-          console.log(conceptNetQuery);
+      var conceptNetQuery = buildConceptNetTextQuery( textCombos[combo] );
+      console.log(conceptNetQuery);
 
       $.ajax({ 
           url: query_base + encodeURI(conceptNetQuery), 
           dataType: 'json', 
           async: false, 
           success: function(data){ 
-               // console.log(data);  
+              // console.log(data);  
 
-                var edges = data.edges;
-                console.log( combo + ": " + edges.length);
-               // for( var e in edges )
-               // {
-               //      var edge = edges[e];
-               //      console.log( edge.start + ", " + edge.rel + ", " + edge.end );
-               // }
+              results = [];
+ 
+              for( var e in data.edges )
+              {
+                  var edge = data.edges[e];
+                  var regex = new RegExp('/' + animal + '/i');
+                  if(edge.start.match(regex) !== '') {
+                    sim = getSimilarity('/c/en/'+animal, edge.start.match(/(\/[\w]*){3}/g)[0]);
+                  }
+                  else if(edge.end.match(regex) !== '') {
+                    sim = getSimilarity('/c/en/'+animal, edge.end.match(/(\/[\w]*){3}/g)[0]);
+                  } 
 
-               // if( edges.length > 0) 
-               // {
-               //      console.log("YES!");
-               // }
-               // else
-               // {
-               //      searchSimilarConcepts(assertion);
-               //      console.log("NO!");
-               // }
+                  if(sim > similarityThreshold) {
+                    console.log(edge);
+                    results.push(edge);
+                  }
+              }
+              console.log(results.length);
           } 
      });
 
-     }
-     
+      if(results.length > 0)
 
-    //  $.getJSON(query_base + encodeURIComponent(conceptNetQuery), function(data)
-    //  {
-    //       // console.log(data);  
-
-    //       var edges = data.edges;
-    //       for( var e in edges )
-    //       {
-    //            var edge = edges[e];
-    //            console.log( edge.start + ", " + edge.rel + ", " + edge.end );
-    //       }
-
-    //       if( edges.length > 0) 
-    //       {
-    //            console.log("YES!");
-    //       }
-    //       else
-    //       {
-    //            searchSimilarConcepts(assertion);
-    //            console.log("NO!");
-    //       }
-    // });
-
+    }
 }
+
+//=============================================================================
+//  getSimilarity
+//
+//  concepts should be passed in the form: /c/en/Concept
+//=============================================================================
+var getSimilarity = function (concept1, concept2) {
+  var sim = 0;
+
+  $.ajax({
+    url: query_base + conceptNetAssocBaseURI + concept1 + '?filter=' + concept2, 
+    dataType: 'json', 
+    async: false, 
+    success: function(data){ 
+      for (var i in data.similar) {
+        if(data.similar[i][0] === concept2){
+          sim = data.similar[i][1];
+          break;
+        }
+      }
+    }
+  });
+
+  return sim;
+};
 
 //=============================================================================
 //  findFirstVerbIndex
