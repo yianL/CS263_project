@@ -1,13 +1,15 @@
 var query_base = 'http://jsonp.jit.su/?url=';
+var arkParseBaseURI = 'http://demo.ark.cs.cmu.edu/parse/api/v1/parse?sentence=';
 var conceptNetSearchBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/search?';
 var conceptNetAssocBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/assoc/';
+var normalizeWSBaseURI = 'http://nodeboxlg.appspot.com/normalize?term=';
 var animal = 'bear';
 var conceptNetlimit = 100;
 var similarityThreshold = 0.96;
 
 var stopwordList = ['a','about','above','after','again','against','all','am',
 'an','and','any','are','as','at','be','because','been','before','being','below',
-'between','both','but','by','cannot','could','did','do','does','doing','down',
+'between','both','but','by', 'can', 'cannot','could','did','do','does','doing','down',
 'during','each','few','for','from','further','had','has','have','having','he',
 'her','here','hers','herself','him','himself','his','how','i','if','in','into',
 'is','it','its','itself','me','more','most','my','myself','no','nor','not','of',
@@ -34,22 +36,22 @@ var queryConceptNet = function (assertion)
      $.getJSON(query_base + encodeURIComponent(conceptNetQuery), function(data){
      // console.log(data);  
 
-     var edges = data.edges;
-     for( var e in edges )
-     {
-          var edge = edges[e];
-          console.log( edge.start + ", " + edge.rel + ", " + edge.end );
-     }
+          var edges = data.edges;
+          for( var e in edges )
+          {
+               var edge = edges[e];
+               console.log( edge.start + ", " + edge.rel + ", " + edge.end );
+          }
 
-     if( edges.length > 0) 
-     {
-          console.log("YES!");
-     }
-     else
-     {
-          searchSimilarConcepts(assertion);
-          console.log("NO!");
-     }
+          if( edges.length > 0) 
+          {
+               console.log("YES!");
+          }
+          else
+          {
+               searchSimilarConcepts(assertion);
+               console.log("NO!");
+          }
     });
 
 
@@ -111,7 +113,7 @@ var removeStopWords = function(string)
      var nonStopWords = [];
      for( var i in words)
      {
-          if( stopwordList.indexOf(words[i]) == -1  )
+          if( stopwordList.indexOf(words[i].toLowerCase()) == -1  )
           {
                nonStopWords.push(words[i]);
           }
@@ -122,9 +124,9 @@ var removeStopWords = function(string)
      {
           stringWithoutStopWords += nonStopWords[i] + " ";
      }
-     stringWithoutStopWords  = stringWithoutStopWords.substr(0, stringWithoutStopWords.length-1);
+
      //console.log(stringWithoutStopWords);
-     return stringWithoutStopWords
+     return stringWithoutStopWords.trim();
 
 };
 
@@ -221,6 +223,53 @@ var handleDoesIt = function(arkResult) {
   return assertion;
 };
 
+var buildConceptNetTextQuery = function(wordList)
+{
+     var textList = animal + ',';
+     for (var w in wordList)
+     {
+          if( w < wordList.length - 1 )
+          {
+               textList += wordList[w] + ",";
+          }
+          else
+          {
+               textList += wordList[w];        
+          }
+     }
+     return  conceptNetSearchBaseURI + 'text=' + textList;
+}
+
+var queryConceptNetText = function(listOfWords)
+{
+
+     var conceptNetQuery = buildConceptNetTextQuery( listOfWords );
+     console.log(conceptNetQuery);
+
+     $.getJSON(query_base + encodeURIComponent(conceptNetQuery), function(data)
+     {
+          // console.log(data);  
+
+          var edges = data.edges;
+          for( var e in edges )
+          {
+               var edge = edges[e];
+               console.log( edge.start + ", " + edge.rel + ", " + edge.end );
+          }
+
+          if( edges.length > 0) 
+          {
+               console.log("YES!");
+          }
+          else
+          {
+               searchSimilarConcepts(assertion);
+               console.log("NO!");
+          }
+    });
+
+}
+
 //=============================================================================
 //  findFirstVerbIndex
 //
@@ -269,9 +318,30 @@ var getFrameInfo = function(arkResult) {
       }
     }
   }
-
+  frameInfo.frame_text = lemmatize(frameInfo.frame_text);
+  frameInfo.object = lemmatize(frameInfo.object);
   return frameInfo;
 };
+
+var lemmatize = function(string) 
+{
+     var base_URL = query_base + normalizeWSBaseURI;
+
+     var lemmatizedString = '';
+
+     $.ajax({ 
+          url: base_URL + encodeURI(string), 
+          dataType: 'json', 
+          async: false, 
+          success: function(json){ 
+               //Process data retrieved
+               lemmatizedString = json.result;
+          } 
+     });
+
+     //console.log(lemmatizedString);
+     return lemmatizedString;
+}
 
 
 //=============================================================================
@@ -282,26 +352,33 @@ var getFrameInfo = function(arkResult) {
 $(function(){
   $('#submit_btn').click(function(){
     
-    var query_base = 'http://jsonp.jit.su/?url=http://demo.ark.cs.cmu.edu/parse/api/v1/parse?sentence=';
+    var baseURI = query_base + arkParseBaseURI;
     var query = $('#q_text').val();
     var assertion;
 
-    query = query.replace(/^\s*is\s+it/i, 'it is');
+    //query = query.replace(/^\s*is\s+it/i, 'it is');
     
-    $.getJSON(query_base + encodeURI(query), function(data){
+    $.getJSON(baseURI + encodeURI(query), function(data){
       //console.log(data.sentences);
 
 
-      if(query.match(/^\s*it\s+is/i) != null) { // Is it?
-        assertion = handleIsIt(data.sentences[0]);
-      } else if(query.match(/^\s*can\s+it/i) != null) {  // Can it ..?
-        assertion = handleCanIt(data.sentences[0]);
-      } else if(query.match(/^\s*does\s+it/i) != null) {
-        assertion = handleDoesIt(data.sentences[0]);
-      }
 
-      queryConceptNet(assertion);
+      // if(query.match(/^\s*it\s+is/i) != null) { // Is it?
+      //   assertion = handleIsIt(data.sentences[0]);
+      // } else if(query.match(/^\s*can\s+it/i) != null) {  // Can it ..?
+      //   assertion = handleCanIt(data.sentences[0]);
+      // } else if(query.match(/^\s*does\s+it/i) != null) {
+      //   assertion = handleDoesIt(data.sentences[0]);
+      // }
+
+      //queryConceptNet(assertion);
       //$('#results').html('');
+      query = query.replace(/[.?]*$/, '');
+      var noStopWordsQuery = removeStopWords(query);
+
+      var lemmatizedString = lemmatize(noStopWordsQuery);
+      console.log(lemmatizedString);
+      queryConceptNetText(lemmatizedString.split(' '));
 
       //console.log(assertion);
     });
