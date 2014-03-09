@@ -265,8 +265,16 @@ var findCombinations = function(str)
 var queryConceptNetText = function(listOfWords)
 {
      var textCombos =  findCombinations(listOfWords);
-     var results;
+     var results = [];
+     var localScore;
      var sim;
+     var denominator = Math.pow(2, listOfWords.length) - 1;
+     var weights = [];
+     var sum = 0;
+
+     for( var i=0;i<listOfWords.length;i++) {
+        weights.push(Math.pow(2, i));
+     }
 
      for( combo in textCombos ){
 
@@ -280,7 +288,7 @@ var queryConceptNetText = function(listOfWords)
           success: function(data){ 
               // console.log(data);  
 
-              results = [];
+              localScore = 0;
  
               for( var e in data.edges )
               {
@@ -296,16 +304,46 @@ var queryConceptNetText = function(listOfWords)
                   if(sim > similarityThreshold) {
                     console.log(edge);
                     results.push(edge);
+                    localScore++;
                   }
               }
-              console.log(results.length);
           } 
      });
 
-      if(results.length > 0)
-
+     sum += getTriangularSum(localScore) * weights[textCombos[combo].length - 1];
     }
+    sum /= denominator;
+    console.log(sum);
+
+    // enable submit buttons
+    var query = $('#q_text').val();
+
+    $('#submit_btn').html('Submit');
+    $('#submit_btn').removeAttr('disabled');
+    $('#q_text').val('');
+
+    $('#item-template').clone().removeAttr('id').prependTo('#result-list');
+    $('ol#result-list > li:first .q').html(query);
+    $('ol#result-list > li:first .a').html(sum);
+
+    var assertionList = $('ol#result-list > li:first ul');
+    for(var i in results) {
+      var a = results[i].start + ' - ' + results[i].rel + ' - ' + results[i].end;
+      assertionList.append('<li>' + a + '</li>');
+    }
+
+    $('ol#result-list > li:first').fadeIn();
 }
+
+var getTriangularSum = function(n) {
+  var denominator = 1;
+  var sum = 0;
+  for(var i = 0;i<n;i++) {
+    denominator += i+2;
+    sum += 1 / denominator;
+  }
+  return sum;
+};
 
 //=============================================================================
 //  getSimilarity
@@ -411,40 +449,52 @@ var lemmatize = function(string)
 //
 //    The animal game player
 //==============================================================================
-$(function(){
-  $('#submit_btn').click(function(){
-    
-    var baseURI = query_base + arkParseBaseURI;
-    var query = $('#q_text').val();
-    var assertion;
+function fake_submit() {
+  $('#submit_btn').html('Thinking..');
+  $('#submit_btn').attr('disabled', 'disabled');
+  console.log('click..');
+};
 
-    //query = query.replace(/^\s*is\s+it/i, 'it is');
-    
-    $.getJSON(baseURI + encodeURI(query), function(data){
-      //console.log(data.sentences);
+function submit(){
+  var query = $('#q_text').val().trim();
+  if(query.length == 0) {
+    alert('Ask something!');
+    return;
+  }
+
+  var baseURI = query_base + arkParseBaseURI;
+  var assertion;
+
+  // disable the button
+  $('#submit_btn').html('Thinking..');
+  $('#submit_btn').attr('disabled', 'disabled');
+
+  //query = query.replace(/^\s*is\s+it/i, 'it is');
+  
+  $.getJSON(baseURI + encodeURI(query), function(data){
+    //console.log(data.sentences);
 
 
 
-     //Use assertions to query conceptnet
+   //Use assertions to query conceptnet
 
-      // if(query.match(/^\s*it\s+is/i) != null) { // Is it?
-      //   assertion = handleIsIt(data.sentences[0]);
-      // } else if(query.match(/^\s*can\s+it/i) != null) {  // Can it ..?
-      //   assertion = handleCanIt(data.sentences[0]);
-      // } else if(query.match(/^\s*does\s+it/i) != null) {
-      //   assertion = handleDoesIt(data.sentences[0]);
-      // }
+    // if(query.match(/^\s*it\s+is/i) != null) { // Is it?
+    //   assertion = handleIsIt(data.sentences[0]);
+    // } else if(query.match(/^\s*can\s+it/i) != null) {  // Can it ..?
+    //   assertion = handleCanIt(data.sentences[0]);
+    // } else if(query.match(/^\s*does\s+it/i) != null) {
+    //   assertion = handleDoesIt(data.sentences[0]);
+    // }
 
-      //queryConceptNet(assertion);
-      //$('#results').html('');
+    //queryConceptNet(assertion);
+    //$('#results').html('');
 
-      //Use text to search conceptNet, accepts any relation0
-      query = query.replace(/[.?]*$/, '');
-      var noStopWordsQuery = removeStopWords(query);
-      var lemmatizedString = lemmatize(noStopWordsQuery);
-      queryConceptNetText(lemmatizedString.split(' '));
+    //Use text to search conceptNet, accepts any relation0
+    query = query.replace(/[.?]*$/, '');
+    var noStopWordsQuery = removeStopWords(query);
+    var lemmatizedString = lemmatize(noStopWordsQuery);
+    queryConceptNetText(lemmatizedString.split(' '));
 
-      //console.log(assertion);
-    });
+    //console.log(assertion);
   });
-});
+};

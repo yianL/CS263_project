@@ -36,18 +36,22 @@
       <h1>Let's play</h1>
       <p><textarea id="q_text" class="form-control" rows="3" placeholder="Does it live in the ocean?"></textarea></p>
       <p>
-        <a class="btn btn-lg btn-primary" id="submit_btn" href="#" role="button">Submit</a>
+        <button class="btn btn-lg btn-primary" id="submit_btn" href="#" role="button" onclick="submit();">Submit</button>
       </p>
     </div>
     
     <div >
-      <h2>Parse Result:</h2>
-      <ul id="results">
-        
-      </ul>
+      <ol id="result-list">
+        <li id="item-template" class="result-item" style="display: none;">
+          <h3><span class="q">Question</span>&nbsp;<span class="a">Y/N</span></h3>
+          <ul></ul>
+        </li>
+      </ol>
     </div>
 
   </div>
+
+  
   
   <script src="//code.jquery.com/jquery-1.11.0.min.js"></script>
   <script src="//netdna.bootstrapcdn.com/bootstrap/3.1.1/js/bootstrap.min.js"></script>
