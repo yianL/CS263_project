@@ -3,7 +3,7 @@ var arkParseBaseURI = 'http://demo.ark.cs.cmu.edu/parse/api/v1/parse?sentence=';
 var conceptNetSearchBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/search?';
 var conceptNetAssocBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/assoc/';
 var normalizeWSBaseURI = 'http://nodeboxlg.appspot.com/normalize?term=';
-var animal = 'monkey';
+var animal = 'rabbit';
 var conceptNetlimit = 100;
 var similarityThreshold = 0.96;
 
@@ -262,6 +262,36 @@ var findCombinations = function(str)
 
 }
 
+var factorial = function(n)
+{
+  var product = 1;
+  for( var i = 1; i <= n; i++ ) {
+    product *= i;
+   }
+  return product;
+};
+
+var numberOfCombinations = function(n, k)
+{
+    return factorial(n)/ (factorial(k) * factorial(n-k));
+
+};
+
+var computeWeights = function(numberOfWords)
+{
+     var discretion = 3;
+     var denominator = (Math.pow(discretion, numberOfWords) - 1)/(discretion - 1);
+
+     var weights = [];
+     for( var i = 0; i < numberOfWords; ++i) {
+        weights.push(    Math.pow(discretion, i) / 
+                    ( denominator * numberOfCombinations(numberOfWords, i + 1) 
+                         ) );
+     }
+     return weights;
+};
+
+
 var queryConceptNetText = function(listOfWords)
 {
      var textCombos =  findCombinations(listOfWords);
@@ -272,9 +302,8 @@ var queryConceptNetText = function(listOfWords)
      var weights = [];
      var sum = 0;
 
-     for( var i=0;i<listOfWords.length;i++) {
-        weights.push(Math.pow(2, i));
-     }
+     weights = computeWeights(listOfWords.length);
+     console.log("weights: " + weights);
 
      for( combo in textCombos ){
 
@@ -310,10 +339,14 @@ var queryConceptNetText = function(listOfWords)
           } 
      });
 
-     sum += getTriangularSum(localScore) * weights[textCombos[combo].length - 1];
+      var localWeight =  weights[textCombos[combo].length - 1];
+      var triangularSum = getTriangularSum(localScore);
+     console.log("total sum = localWeight * triangularSum");
+     console.log( localWeight*triangularSum + " = " + localWeight + " * " + triangularSum );
+     sum += localWeight * triangularSum ; 
+
     }
-    sum /= denominator;
-    console.log(sum);
+    console.log("final sum: " + sum);
 
     // enable submit buttons
     var query = $('#q_text').val();
