@@ -3,7 +3,7 @@ var arkParseBaseURI = 'http://demo.ark.cs.cmu.edu/parse/api/v1/parse?sentence=';
 var conceptNetSearchBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/search?';
 var conceptNetAssocBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/assoc/';
 var normalizeWSBaseURI = 'http://nodeboxlg.appspot.com/normalize?term=';
-var animal = 'rabbit';
+var animal = 'shark';
 var conceptNetlimit = 100;
 var similarityThreshold = 0.96;
 
