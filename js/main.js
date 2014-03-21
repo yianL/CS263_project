@@ -3,7 +3,7 @@ var arkParseBaseURI = 'http://demo.ark.cs.cmu.edu/parse/api/v1/parse?sentence=';
 var conceptNetSearchBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/search?';
 var conceptNetAssocBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/assoc/';
 var normalizeWSBaseURI = 'http://nodeboxlg.appspot.com/normalize?term=';
-var animal = 'shark';
+var animal = prompt('Please enter concept to guess');
 var conceptNetlimit = 100;
 var similarityThreshold = 0.96;
 
@@ -106,6 +106,12 @@ var buildConceptNetSearchQuery = function(startConcept, assertion)
 
 };
 
+
+//=============================================================================
+//   removeStopWords
+//
+//        removes stop words like "is, a, have, the" from input string
+//=============================================================================
 var removeStopWords = function(string) 
 {
      //console.log("remove stop words: " + string);
@@ -223,6 +229,12 @@ var handleDoesIt = function(arkResult) {
   return assertion;
 };
 
+//=============================================================================
+//  buildConceptNetTextQuery
+//
+//    converts list of words into conceptNet text search
+//       
+//=============================================================================
 var buildConceptNetTextQuery = function(wordList)
 {
      var textList = animal + ',';
@@ -240,6 +252,12 @@ var buildConceptNetTextQuery = function(wordList)
      return  conceptNetSearchBaseURI + 'text=' + textList;
 }
 
+//=============================================================================
+//  findCombinations
+//
+//    finds all combinations of all sizes given a list of words
+//       
+//=============================================================================
 var findCombinations = function(str)
 {
      var fn = function(active, rest, a) {
@@ -262,6 +280,12 @@ var findCombinations = function(str)
 
 }
 
+//=============================================================================
+//  factorial
+//
+//    given n, returns n! = n*(n-1)*...2*1
+//       
+//=============================================================================
 var factorial = function(n)
 {
   var product = 1;
@@ -271,12 +295,27 @@ var factorial = function(n)
   return product;
 };
 
+
+//=============================================================================
+//  numberOfCombinations
+//
+//    computes n choose k
+//       
+//=============================================================================
 var numberOfCombinations = function(n, k)
 {
     return factorial(n)/ (factorial(k) * factorial(n-k));
 
 };
 
+
+//=============================================================================
+//  computeWeights
+//
+//    given the total number of words to search, returns a list of weights 
+//      for each combination
+//       
+//=============================================================================
 var computeWeights = function(numberOfWords)
 {
      var discretion = 3;
@@ -292,6 +331,15 @@ var computeWeights = function(numberOfWords)
 };
 
 
+//=============================================================================
+//  queryConceptNetText
+//
+//    a second approach (statistical approach) to answering a query.
+//      This function takes a list of words and does a text search
+//      on conceptNet with all combinations of the words,
+//      filters bad results, and computes score for good results. 
+//       
+//=============================================================================
 var queryConceptNetText = function(listOfWords)
 {
      var textCombos =  findCombinations(listOfWords);
@@ -368,6 +416,13 @@ var queryConceptNetText = function(listOfWords)
     $('ol#result-list > li:first').fadeIn();
 }
 
+
+//=============================================================================
+//  getTriangularSum
+//
+//    compues the inverse triangular sum up to the nth value: 
+//        if n = infinity: 1/3 + 1/6 + 1/10 + 1/15 + ... = 1     
+//=============================================================================
 var getTriangularSum = function(n) {
   var denominator = 1;
   var sum = 0;
@@ -456,11 +511,16 @@ var getFrameInfo = function(arkResult) {
   return frameInfo;
 };
 
+//==============================================================================
+//  lemmatize 
+//
+//    Calls a python webservice to lemmatize all words
+//    Example: ate -> eat, words -> word, singing -> sing
+//==============================================================================
 var lemmatize = function(string) 
 {
      var base_URL = query_base + normalizeWSBaseURI;
 
-     var lemmatizedString = '';
 
      $.ajax({ 
           url: base_URL + encodeURI(string), 
@@ -476,18 +536,11 @@ var lemmatize = function(string)
      return lemmatizedString;
 }
 
-
 //==============================================================================
 //  sumbitButtonHanlder / main
 //
 //    The animal game player
 //==============================================================================
-function fake_submit() {
-  $('#submit_btn').html('Thinking..');
-  $('#submit_btn').attr('disabled', 'disabled');
-  console.log('click..');
-};
-
 function submit(){
   var query = $('#q_text').val().trim();
   if(query.length == 0) {
