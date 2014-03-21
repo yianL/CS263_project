@@ -1,9 +1,9 @@
-var query_base = 'http://jsonp.jit.su/?url=';
+var query_base = 'fetch?url=';
 var arkParseBaseURI = 'http://demo.ark.cs.cmu.edu/parse/api/v1/parse?sentence=';
 var conceptNetSearchBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/search?';
 var conceptNetAssocBaseURI = 'http://conceptnet5.media.mit.edu/data/5.1/assoc/';
-var normalizeWSBaseURI = 'http://nodeboxlg.appspot.com/normalize?term=';
-var animal = 'shark';
+var normalizeWSBaseURI = 'normalize?term=';
+var animal = prompt('Pick an animal to start asking questions about ');
 var conceptNetlimit = 100;
 var similarityThreshold = 0.96;
 
@@ -53,9 +53,8 @@ var queryConceptNet = function (assertion)
                console.log("NO!");
           }
     });
-
-
 };
+
 //=============================================================================
 //   searchSimilarConcepts
 //
@@ -129,8 +128,6 @@ var removeStopWords = function(string)
      return stringWithoutStopWords.trim();
 
 };
-
-
 
 //=============================================================================
 //  handleIsIt
@@ -294,56 +291,55 @@ var computeWeights = function(numberOfWords)
 
 var queryConceptNetText = function(listOfWords)
 {
-     var textCombos =  findCombinations(listOfWords);
-     var results = [];
-     var localScore;
-     var sim;
-     var denominator = Math.pow(2, listOfWords.length) - 1;
-     var weights = [];
-     var sum = 0;
+  var textCombos =  findCombinations(listOfWords);
+  var results = [];
+  var localScore;
+  var sim;
+  var denominator = Math.pow(2, listOfWords.length) - 1;
+  var weights = [];
+  var sum = 0;
 
-     weights = computeWeights(listOfWords.length);
-     console.log("weights: " + weights);
+  weights = computeWeights(listOfWords.length);
+  console.log("weights: " + weights);
 
-     for( combo in textCombos ){
+  for( combo in textCombos ){
 
-      var conceptNetQuery = buildConceptNetTextQuery( textCombos[combo] );
-      console.log(conceptNetQuery);
+    var conceptNetQuery = buildConceptNetTextQuery( textCombos[combo] );
+    console.log(conceptNetQuery);
 
-      $.ajax({ 
-          url: query_base + encodeURI(conceptNetQuery), 
-          dataType: 'json', 
-          async: false, 
-          success: function(data){ 
-              // console.log(data);  
+    $.ajax({ 
+      url: query_base + encodeURI(conceptNetQuery), 
+      dataType: 'json', 
+      async: false, 
+      success: function(data){ 
+        // console.log(data);  
 
-              localScore = 0;
+        localScore = 0;
  
-              for( var e in data.edges )
-              {
-                  var edge = data.edges[e];
-                  var regex = new RegExp('/' + animal + '/i');
-                  if(edge.start.match(regex) !== '') {
-                    sim = getSimilarity('/c/en/'+animal, edge.start.match(/(\/[\w]*){3}/g)[0]);
-                  }
-                  else if(edge.end.match(regex) !== '') {
-                    sim = getSimilarity('/c/en/'+animal, edge.end.match(/(\/[\w]*){3}/g)[0]);
-                  } 
-
-                  if(sim > similarityThreshold) {
-                    console.log(edge);
-                    results.push(edge);
-                    localScore++;
-                  }
-              }
+        for( var e in data.edges ) {
+          var edge = data.edges[e];
+          var regex = new RegExp('/' + animal + '/i');
+          if(edge.start.match(regex) !== '') {
+            sim = getSimilarity('/c/en/'+animal, edge.start.match(/(\/[\w]*){3}/g)[0]);
+          }
+          else if(edge.end.match(regex) !== '') {
+            sim = getSimilarity('/c/en/'+animal, edge.end.match(/(\/[\w]*){3}/g)[0]);
           } 
-     });
 
-      var localWeight =  weights[textCombos[combo].length - 1];
-      var triangularSum = getTriangularSum(localScore);
-     console.log("total sum = localWeight * triangularSum");
-     console.log( localWeight*triangularSum + " = " + localWeight + " * " + triangularSum );
-     sum += localWeight * triangularSum ; 
+          if(sim > similarityThreshold) {
+            console.log(edge);
+            results.push(edge);
+            localScore++;
+          }
+        }
+      } 
+    });
+
+    var localWeight =  weights[textCombos[combo].length - 1];
+    var triangularSum = getTriangularSum(localScore);
+    console.log("total sum = localWeight * triangularSum");
+    console.log( localWeight*triangularSum + " = " + localWeight + " * " + triangularSum );
+    sum += localWeight * triangularSum ; 
 
     }
     console.log("final sum: " + sum);
@@ -458,22 +454,20 @@ var getFrameInfo = function(arkResult) {
 
 var lemmatize = function(string) 
 {
-     var base_URL = query_base + normalizeWSBaseURI;
+  var lemmatizedString = '';
 
-     var lemmatizedString = '';
+  $.ajax({ 
+      url: normalizeWSBaseURI + encodeURI(string), 
+      dataType: 'json', 
+      async: false, 
+      success: function(json){ 
+            //Process data retrieved
+            lemmatizedString = json.result;
+      } 
+  });
 
-     $.ajax({ 
-          url: base_URL + encodeURI(string), 
-          dataType: 'json', 
-          async: false, 
-          success: function(json){ 
-               //Process data retrieved
-               lemmatizedString = json.result;
-          } 
-     });
-
-     //console.log(lemmatizedString);
-     return lemmatizedString;
+  //console.log(lemmatizedString);
+  return lemmatizedString;
 }
 
 
@@ -506,8 +500,6 @@ function submit(){
   
   $.getJSON(baseURI + encodeURI(query), function(data){
     //console.log(data.sentences);
-
-
 
    //Use assertions to query conceptnet
 

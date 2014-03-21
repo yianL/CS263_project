@@ -79,8 +79,10 @@ class FetchHandler(webapp2.RequestHandler):
             page.write('page not found on query string')
 
         else:
-            """params = urllib.urlencode(p['url'])"""
-            result = urlfetch.fetch(url = p['url'], method = urlmethod) 
+            #print(urllib.quote(p['url'], ''))
+            urls = p['url'].split('?')
+            #print(urls[0] + urllib.quote(urls[1], '='))
+            result = urlfetch.fetch(urls[0] + "?" + urllib.quote(urls[1], '='), method = urlmethod) 
             
             self.response.out.write(result.content)
 
